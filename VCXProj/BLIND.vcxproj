@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>18.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{117af621-4c28-45eb-8dc9-73ef126ac8d1}</ProjectGuid>
+    <ProjectName>BLIND</ProjectName>
+    <RootNamespace>BLIND</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Platform)'=='x64'">
+    <TargetName>BLIND</TargetName>
+    <OutDir>$(MSBuildThisFileDirectory)..\bin\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(MSBuildThisFileDirectory)..\obj\$(Configuration)\$(Platform)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <BufferSecurityCheck>true</BufferSecurityCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>BLIND_STANDALONE=1;IX_BLIND_EXPORTS;WIN32_LEAN_AND_MEAN;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)..\ABI;$(MSBuildThisFileDirectory)..\Usermode\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ControlFlowGuard>Guard</ControlFlowGuard>
+      <CETCompat>true</CETCompat>
+      <RandomizedBaseAddress>true</RandomizedBaseAddress>
+      <HighEntropyVA>true</HighEntropyVA>
+      <DataExecutionPrevention>true</DataExecutionPrevention>
+      <AdditionalDependencies>Ws2_32.lib;Dnsapi.lib;Advapi32.lib;Ole32.lib;Secur32.lib;Crypt32.lib;Winhttp.lib;Wininet.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <ClCompile>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+      <StringPooling>true</StringPooling>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <ControlFlowGuard>Guard</ControlFlowGuard>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Usermode\hook\hooks\controller.cpp" />
+    <ClCompile Include="..\Usermode\hook\hooks\ki.cpp" />
+    <ClCompile Include="..\Usermode\hook\hooks\module.cpp" />
+    <ClCompile Include="..\Usermode\hook\hooks\nt.cpp">
+      <ControlFlowGuard Condition="'$(Configuration)'=='Release'">false</ControlFlowGuard>
+      <WholeProgramOptimization Condition="'$(Configuration)'=='Release'">false</WholeProgramOptimization>
+    </ClCompile>
+    <ClCompile Include="..\Usermode\hook\hooks\runtime_bootstrap.cpp" />
+    <ClCompile Include="..\Usermode\hook\hooks\runtime.cpp" />
+    <ClCompile Include="..\Usermode\hook\hooks\runtime_cfg.cpp" />
+    <ClCompile Include="..\Usermode\hook\hooks\runtime_integrity.cpp" />
+    <ClCompile Include="..\Usermode\hook\hooks\runtime_launch_gate.cpp" />
+    <ClCompile Include="..\Usermode\hook\hooks\runtime_pic.cpp" />
+    <ClCompile Include="..\Usermode\hook\hooks\ws.cpp" />
+    <ClCompile Include="..\Usermode\hook\instrument\stacktrace.cpp" />
+    <ClCompile Include="..\Usermode\hook\instrument\ix.cpp" />
+    <ClCompile Include="..\Usermode\hook\ipc\pipe.cpp" />
+    <ClCompile Include="..\Usermode\hook\ipc\recv.cpp" />
+    <ClCompile Include="..\Usermode\hook\ipc\send.cpp" />
+    <ClCompile Include="..\Usermode\hook\dll.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\ABI\blind_ipc.h" />
+    <ClInclude Include="..\sdk\include\blind\blind_ipc.h" />
+    <ClInclude Include="..\sdk\include\blind\blind_veh.h" />
+    <ClInclude Include="..\Usermode\include\native_peb.h" />
+    <ClInclude Include="..\Usermode\hook\hooks\controller.h" />
+    <ClInclude Include="..\Usermode\hook\hooks\encoded_literal.h" />
+    <ClInclude Include="..\Usermode\hook\hooks\ki.h" />
+    <ClInclude Include="..\Usermode\hook\hooks\module.h" />
+    <ClInclude Include="..\Usermode\hook\hooks\nt.h" />
+    <ClInclude Include="..\Usermode\hook\hooks\runtime.h" />
+    <ClInclude Include="..\Usermode\hook\hooks\runtime_private.h" />
+    <ClInclude Include="..\Usermode\hook\hooks\ws.h" />
+    <ClInclude Include="..\Usermode\hook\instrument\ix.h" />
+    <ClInclude Include="..\Usermode\hook\instrument\stacktrace.h" />
+    <ClInclude Include="..\Usermode\hook\ipc\pipe.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

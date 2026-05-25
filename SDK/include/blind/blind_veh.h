@@ -1,0 +1,118 @@
+#pragma once
+#ifndef IX_BLIND_VEH_H
+#define IX_BLIND_VEH_H
+
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+
+#include <cstdint>
+#include <cstddef>
+#ifndef IX_BLIND_API
+#ifdef IX_BLIND_EXPORTS
+#define IX_BLIND_API extern "C" __declspec(dllexport)
+#elif defined(IX_BLIND_IMPORTS)
+#define IX_BLIND_API extern "C" __declspec(dllimport)
+#else
+#define IX_BLIND_API extern "C"
+#endif
+#endif
+
+namespace ix::IX
+{
+    inline constexpr std::size_t kMaxStackFrames = 64;
+    inline constexpr std::size_t kMaxModuleName = 64;
+    inline constexpr std::size_t kMaxExInfo = 4;
+
+    struct Event final
+    {
+        DWORD exception_code{};
+        DWORD exception_flags{};
+        void *exception_address{};
+
+        DWORD pid{};
+        DWORD tid{};
+
+        wchar_t module_basename_lower[kMaxModuleName]{};
+
+        ULONG exception_info_count{};
+        ULONG_PTR exception_info[kMaxExInfo]{};
+
+        USHORT stack_frame_count{};
+        void *stack[kMaxStackFrames]{};
+
+#if defined(_M_X64)
+        std::uint64_t rip{};
+        std::uint64_t rsp{};
+        std::uint64_t rbp{};
+        std::uint64_t rax{};
+        std::uint64_t rbx{};
+        std::uint64_t rcx{};
+        std::uint64_t rdx{};
+        std::uint64_t rsi{};
+        std::uint64_t rdi{};
+        std::uint64_t r8{};
+        std::uint64_t r9{};
+        std::uint64_t r10{};
+        std::uint64_t r11{};
+        std::uint64_t r12{};
+        std::uint64_t r13{};
+        std::uint64_t r14{};
+        std::uint64_t r15{};
+        std::uint64_t eflags{};
+#endif
+
+        bool is_target_module{};
+        bool is_memory_fault{};
+        bool is_noncontinuable{};
+    };
+
+    using TelemetryFn = void (*)(const Event &evt, void *user) noexcept;
+    using MemoryFaultHandlerFn = bool (*)(const Event &evt, EXCEPTION_POINTERS *ep, void *user) noexcept;
+
+    struct TelemetryArguments final
+    {
+        const wchar_t *target_module_basename = nullptr;
+
+        TelemetryFn low_noise_telemetry = nullptr;
+        TelemetryFn high_noise_telemetry = nullptr;
+
+        MemoryFaultHandlerFn memory_fault_handler = nullptr;
+
+        void *user = nullptr;
+
+        bool install_first = true;
+        bool auto_promote = true;
+
+        bool capture_stack = true;
+        std::uint16_t stack_frames_to_skip = 3;
+        std::uint16_t max_stack_frames = static_cast<std::uint16_t>(kMaxStackFrames);
+
+        bool swallow_non_target_exceptions = false;
+    };
+} // namespace ix::IX
+using IxBlindEvent = ix::IX::Event;
+using IxBlindTelemetryArguments = ix::IX::TelemetryArguments;
+using IxBlindTelemetryFn = ix::IX::TelemetryFn;
+using IxBlindMemoryFaultHandlerFn = ix::IX::MemoryFaultHandlerFn;
+IX_BLIND_API PVOID IxRegisterVectoredExceptionHandler(IxBlindTelemetryArguments *args) noexcept;
+IX_BLIND_API BOOL IxPromoteVectoredExceptionHandlerToFront() noexcept;
+IX_BLIND_API void IxUnregisterVectoredExceptionHandler() noexcept;
+inline PVOID IxRegisterVectordExceptionHandler(IxBlindTelemetryArguments *args) noexcept
+{
+    return IxRegisterVectoredExceptionHandler(args);
+}
+
+inline void IxUnregisterVectordExceptionHandler() noexcept
+{
+    IxUnregisterVectoredExceptionHandler();
+}
+
+#define BLIND_SDK_VEH_VERSION_MAJOR 0u
+#define BLIND_SDK_VEH_VERSION_MINOR 1u
+
+#endif

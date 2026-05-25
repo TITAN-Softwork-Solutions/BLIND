@@ -1,0 +1,11 @@
+/bin/
+/obj/
+*.aps
+*.ipch
+*.log
+*.sdf
+*.suo
+*.user
+*.VC.db
+*.VC.opendb
+.vs/
