@@ -2,10 +2,10 @@
 
 BLIND exposes two supported SDK surfaces:
 
-- `sdk/include/blind/blind_ipc.h`: the stable host-facing packet ABI for the named-pipe telemetry channel.
-- `sdk/include/blind/blind_veh.h`: the exported VEH telemetry helper API for explicit in-process tools.
+- `SDK/include/blind/blind_ipc.h`: the stable host-facing packet ABI for the named-pipe event channel.
+- `SDK/include/blind/blind_veh.h`: the exported VEH event helper API for explicit in-process tools.
 
-The IPC surface is the primary integration contract. The VEH surface is narrow and intended for advanced local tooling.
+The IPC surface is the primary integration contract. The VEH surface is narrow and intended for advanced local instrumentation tooling.
 
 ## Versioning
 
@@ -13,7 +13,7 @@ Current SDK version:
 
 ```text
 BLIND_SDK_VERSION_MAJOR=0
-BLIND_SDK_VERSION_MINOR=1
+BLIND_SDK_VERSION_MINOR=2
 BLIND_SDK_IPC_VERSION=IXIPC_VERSION
 ```
 
@@ -38,16 +38,18 @@ The header defines:
 - commands: `IXIPC_COMMAND`;
 - event record: `IXIPC_HOOK_EVENT`;
 - batch record: `IXIPC_HOOK_EVENT_BATCH`;
+- CLI hook policy records: `IXIPC_HOOK_POLICY_RULE` and `IXIPC_QUERY_HOOK_POLICY_RESPONSE`;
+- CLI rule flags: logging, stack traces, and register snapshots;
 - readiness flags and SDK masks.
 
 Readiness masks:
 
-- `BLIND_SDK_READY_CORE_MASK`: IPC, Winsock, NT, and KI readiness. This is the expected complete standalone mask today.
-- `BLIND_SDK_READY_FULL_MASK`: all ABI-defined readiness flags, including the module flag. Hosts may observe this when module coverage is active.
+- `BLIND_SDK_READY_CORE_MASK`: IPC, NT, and KI readiness (`0x0000000D`). This is the minimum healthy standalone runtime mask.
+- `BLIND_SDK_READY_FULL_MASK`: all ABI-defined readiness flags (`0x0000001F`): IPC, Winsock, NT, KI, and module. Hosts may observe partial/full masks as lazy module and Winsock coverage becomes active.
 
 ### `blind_veh.h`
 
-Use this only for in-process VEH telemetry registration:
+Use this only for in-process VEH event registration:
 
 ```cpp
 #include <blind/blind_veh.h>
@@ -70,10 +72,11 @@ The caller owns the `IxBlindTelemetryArguments` object and any callback context.
 Build the runtime, test target, diagnostic runner, and SDK host from this directory:
 
 ```powershell
-msbuild .\vcxproj\BLIND.vcxproj /p:Configuration=Release /p:Platform=x64
-msbuild .\vcxproj\BlindTestTarget.vcxproj /p:Configuration=Release /p:Platform=x64
-msbuild .\vcxproj\BlindRunner.vcxproj /p:Configuration=Release /p:Platform=x64
-msbuild .\vcxproj\BlindSdkHost.vcxproj /p:Configuration=Release /p:Platform=x64
+msbuild .\VCXProj\BLIND.vcxproj /p:Configuration=Release /p:Platform=x64
+msbuild .\VCXProj\BlindTestTarget.vcxproj /p:Configuration=Release /p:Platform=x64
+msbuild .\VCXProj\BlindLaunchGateTarget.vcxproj /p:Configuration=Release /p:Platform=x64
+msbuild .\VCXProj\BlindRunner.vcxproj /p:Configuration=Release /p:Platform=x64
+msbuild .\VCXProj\BlindSdkHost.vcxproj /p:Configuration=Release /p:Platform=x64
 ```
 
 Expected artifacts:
@@ -84,14 +87,15 @@ Expected artifacts:
 .\bin\Release\x64\BlindRunner.exe
 .\bin\Release\x64\BlindSdkHost.exe
 .\bin\Release\x64\BlindTestTarget.exe
+.\bin\Release\x64\BlindLaunchGateTarget.exe
 ```
 
 ## Sample Host
 
-`sdk/samples/host/BlindSdkHost.cpp` is the minimal integration example. It:
+`SDK/samples/host/BlindSdkHost.cpp` is the minimal integration example. It:
 
 - creates the selected pipe;
-- starts an owned target process;
+- starts an owned target process in a new console;
 - loads `BLIND.dll` into that process;
 - handles handshake and readiness packets;
 - receives single events and event batches;
@@ -109,7 +113,7 @@ Run:
 
 Use `BlindRunner.exe` for full diagnostic bundles. Use `BlindSdkHost.exe` for SDK integration smoke testing.
 
-Runner diagnostic formats are documented in `docs/DIAGNOSTICS.md`.
+Runner diagnostic formats are documented in `Docs/DIAGNOSTICS.md`.
 
 The full runner also includes the launch-gate harness:
 

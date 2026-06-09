@@ -1,4 +1,4 @@
-#ifndef WIN32_LEAN_AND_MEAN
+﻿#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 #ifndef NOMINMAX
@@ -9,10 +9,13 @@
 #include <strsafe.h>
 
 #include <blind/blind_ipc.h>
+#include "../../../DLL/support/win32_util.h"
 
 #include <atomic>
 #include <cstdio>
+#include <limits>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -28,101 +31,25 @@ namespace
         std::atomic<DWORD> ReadyMask{0};
         std::atomic<DWORD> EventCount{0};
         bool Verbose = false;
+        bool ReadyAnySatisfies = false;
         std::wstring PipeName;
     };
 
-    bool FileExists(const std::wstring &path) noexcept
-    {
-        const DWORD attrs = GetFileAttributesW(path.c_str());
-        return attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY) == 0;
-    }
-
-    std::wstring DirectoryOf(const wchar_t *path)
-    {
-        wchar_t buffer[MAX_PATH]{};
-        (void)StringCchCopyW(buffer, RTL_NUMBER_OF(buffer), path);
-        wchar_t *slash = wcsrchr(buffer, L'\\');
-        if (slash != nullptr)
-        {
-            *slash = L'\0';
-        }
-        return buffer;
-    }
-
-    std::wstring ModuleDirectory()
-    {
-        wchar_t path[MAX_PATH]{};
-        const DWORD chars = GetModuleFileNameW(nullptr, path, RTL_NUMBER_OF(path));
-        if (chars == 0 || chars >= RTL_NUMBER_OF(path))
-        {
-            return L".";
-        }
-        return DirectoryOf(path);
-    }
-
-    std::wstring JoinPath(const std::wstring &left, const wchar_t *right)
-    {
-        std::wstring joined = left;
-        if (!joined.empty() && joined.back() != L'\\')
-        {
-            joined += L'\\';
-        }
-        joined += right;
-        return joined;
-    }
-
-    std::wstring QuotePath(const std::wstring &path)
-    {
-        std::wstring quoted = L"\"";
-        quoted += path;
-        quoted += L"\"";
-        return quoted;
-    }
-
-    std::wstring EffectivePipeName()
-    {
-        wchar_t pipeName[IXIPC_MAX_PIPE_NAME_CHARS]{};
-        DWORD chars = GetEnvironmentVariableW(IXIPC_PIPE_NAME_ENV, pipeName, RTL_NUMBER_OF(pipeName));
-        if (chars > 0 && chars < RTL_NUMBER_OF(pipeName))
-        {
-            return pipeName;
-        }
-        return IXIPC_HOOK_PIPE_NAME;
-    }
-
-    const char *KindName(UINT32 kind) noexcept
-    {
-        switch (kind)
-        {
-        case IxIpcHookEventNt:
-            return "nt";
-        case IxIpcHookEventWinsock:
-            return "winsock";
-        case IxIpcHookEventKi:
-            return "ki";
-        case IxIpcHookEventExceptionLowNoise:
-        case IxIpcHookEventExceptionHighPriv:
-            return "exception";
-        case IxIpcHookEventIntegrity:
-            return "integrity";
-        case IxIpcHookEventModule:
-            return "module";
-        default:
-            return "unknown";
-        }
-    }
-
-    bool WritePacket(HANDLE pipe, const IXIPC_PACKET &packet) noexcept
-    {
-        DWORD written = 0;
-        return WriteFile(pipe, &packet, sizeof(packet), &written, nullptr) && written == sizeof(packet);
-    }
+    using BLIND_SUPPORT::EffectivePipeName;
+    using BLIND_SUPPORT::EnvironmentVariableEnabled;
+    using BLIND_SUPPORT::FileExists;
+    using BLIND_SUPPORT::JoinPath;
+    using BLIND_SUPPORT::KindName;
+    using BLIND_SUPPORT::ModuleDirectory;
+    using BLIND_SUPPORT::QuotePath;
+    using BLIND_SUPPORT::WritePacket;
 
     void PrintHookEvent(const IXIPC_HOOK_EVENT &eventRecord)
     {
         std::printf("[sdk-host] event pid=%lu tid=%lu kind=%s op=%lu api=%s module=%s caller=0x%llX\n",
                     static_cast<unsigned long>(eventRecord.ProcessId),
-                    static_cast<unsigned long>(eventRecord.ThreadId), KindName(eventRecord.Kind),
+                    static_cast<unsigned long>(eventRecord.ThreadId),
+                    KindName(eventRecord.Kind),
                     static_cast<unsigned long>(eventRecord.Operation),
                     eventRecord.ApiName[0] != '\0' ? eventRecord.ApiName : "<none>",
                     eventRecord.ModuleName[0] != '\0' ? eventRecord.ModuleName : "<none>",
@@ -175,13 +102,17 @@ namespace
             response.Payload.NotifyHookReadyResponse.PendingCommand = 0;
             std::printf("[sdk-host] ready pid=%lu mask=0x%08lX observed=0x%08lX\n",
                         static_cast<unsigned long>(request.Payload.NotifyHookReadyRequest.ProcessId),
-                        static_cast<unsigned long>(localMask), static_cast<unsigned long>(observed));
-            if ((observed & BLIND_SDK_READY_CORE_MASK) == BLIND_SDK_READY_CORE_MASK)
+                        static_cast<unsigned long>(localMask),
+                        static_cast<unsigned long>(observed));
+            if (state.ReadyAnySatisfies || (observed & BLIND_SDK_READY_CORE_MASK) == BLIND_SDK_READY_CORE_MASK)
             {
                 SetEvent(state.ReadyEvent);
             }
             break;
         }
+        case IxIpcCommandQueryHookPolicy:
+            response.Payload.QueryHookPolicyResponse.PolicyVersion = IXIPC_HOOK_POLICY_VERSION;
+            break;
         case IxIpcCommandPublishHookEvent:
             HandleHookEvent(state, request.Payload.HookEvent);
             break;
@@ -214,9 +145,14 @@ namespace
     DWORD WINAPI PipeServerThread(LPVOID parameter)
     {
         auto *state = static_cast<HostState *>(parameter);
-        HANDLE pipe = CreateNamedPipeW(state->PipeName.c_str(), PIPE_ACCESS_DUPLEX,
-                                       PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT, 1, kPipeBufferBytes,
-                                       kPipeBufferBytes, 0, nullptr);
+        HANDLE pipe = CreateNamedPipeW(state->PipeName.c_str(),
+                                       PIPE_ACCESS_DUPLEX,
+                                       PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
+                                       1,
+                                       kPipeBufferBytes,
+                                       kPipeBufferBytes,
+                                       0,
+                                       nullptr);
         if (pipe == INVALID_HANDLE_VALUE)
         {
             std::printf("[sdk-host] CreateNamedPipe failed gle=%lu\n", GetLastError());
@@ -267,6 +203,12 @@ namespace
 
     bool InjectDllIntoChild(HANDLE process, const std::wstring &dllPath)
     {
+        if (dllPath.size() >= (std::numeric_limits<SIZE_T>::max() / sizeof(wchar_t)) - 1u)
+        {
+            std::printf("[sdk-host] DLL path is too long to inject safely\n");
+            return false;
+        }
+
         const SIZE_T bytes = (dllPath.size() + 1u) * sizeof(wchar_t);
         void *remotePath = VirtualAllocEx(process, nullptr, bytes, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
         if (remotePath == nullptr)
@@ -296,8 +238,8 @@ namespace
                     }
                     else
                     {
-                        std::printf("[sdk-host] LoadLibrary wait=%lu exit=0x%08lX gle=%lu\n", wait, exitCode,
-                                    GetLastError());
+                        std::printf(
+                            "[sdk-host] LoadLibrary wait=%lu exit=0x%08lX gle=%lu\n", wait, exitCode, GetLastError());
                     }
                     CloseHandle(thread);
                 }
@@ -311,6 +253,17 @@ namespace
         VirtualFreeEx(process, remotePath, 0, MEM_RELEASE);
         return ok;
     }
+
+    std::wstring BuildCommandLine(const std::wstring &targetPath, const std::vector<std::wstring> &targetArgs)
+    {
+        std::wstring commandLine = QuotePath(targetPath);
+        for (const std::wstring &arg : targetArgs)
+        {
+            commandLine += L" ";
+            commandLine += QuotePath(arg);
+        }
+        return commandLine;
+    }
 } // namespace
 
 int wmain(int argc, wchar_t **argv)
@@ -321,17 +274,35 @@ int wmain(int argc, wchar_t **argv)
 
     HostState state{};
     bool targetSet = false;
+    bool targetArgsOnly = false;
+    std::vector<std::wstring> targetArgs;
     for (int argIndex = 1; argIndex < argc; ++argIndex)
     {
+        if (targetArgsOnly)
+        {
+            targetArgs.emplace_back(argv[argIndex]);
+            continue;
+        }
         if (wcscmp(argv[argIndex], L"--help") == 0)
         {
-            std::wprintf(L"Usage: BlindSdkHost.exe [--verbose] [--pipe \\\\.\\pipe\\Name] [owned-test-exe]\n");
+            std::wprintf(L"Usage: BlindSdkHost.exe [--verbose] [--ready-any] [--pipe \\\\.\\pipe\\Name] "
+                         L"[owned-test-exe] [-- args...]\n");
             std::wprintf(L"Hosts the BLIND IPC pipe and loads BLIND.dll into a child process it creates.\n");
             return 0;
+        }
+        if (wcscmp(argv[argIndex], L"--") == 0)
+        {
+            targetArgsOnly = true;
+            continue;
         }
         if (wcscmp(argv[argIndex], L"--verbose") == 0)
         {
             state.Verbose = true;
+            continue;
+        }
+        if (wcscmp(argv[argIndex], L"--ready-any") == 0)
+        {
+            state.ReadyAnySatisfies = true;
             continue;
         }
         if (wcscmp(argv[argIndex], L"--pipe") == 0)
@@ -351,8 +322,7 @@ int wmain(int argc, wchar_t **argv)
             continue;
         }
 
-        std::wprintf(L"[sdk-host] unexpected argument: %ls\n", argv[argIndex]);
-        return 2;
+        targetArgs.emplace_back(argv[argIndex]);
     }
 
     if (!FileExists(dllPath))
@@ -388,9 +358,23 @@ int wmain(int argc, wchar_t **argv)
     STARTUPINFOW si{};
     PROCESS_INFORMATION pi{};
     si.cb = sizeof(si);
-    std::wstring commandLine = QuotePath(targetPath);
-    const BOOL created = CreateProcessW(targetPath.c_str(), commandLine.data(), nullptr, nullptr, FALSE, 0, nullptr,
-                                        baseDir.c_str(), &si, &pi);
+    const bool hideChildWindow = EnvironmentVariableEnabled(L"BLIND_TEST_NO_NEW_CONSOLE");
+    if (hideChildWindow)
+    {
+        si.dwFlags |= STARTF_USESHOWWINDOW;
+        si.wShowWindow = SW_HIDE;
+    }
+    std::wstring commandLine = BuildCommandLine(targetPath, targetArgs);
+    const BOOL created = CreateProcessW(targetPath.c_str(),
+                                        commandLine.data(),
+                                        nullptr,
+                                        nullptr,
+                                        FALSE,
+                                        hideChildWindow ? CREATE_NO_WINDOW : CREATE_NEW_CONSOLE,
+                                        nullptr,
+                                        baseDir.c_str(),
+                                        &si,
+                                        &pi);
     if (!created)
     {
         std::printf("[sdk-host] CreateProcess failed gle=%lu\n", GetLastError());
@@ -416,7 +400,8 @@ int wmain(int argc, wchar_t **argv)
     }
 
     const DWORD readyWait = WaitForSingleObject(state.ReadyEvent, kReadyTimeoutMs);
-    std::printf("[sdk-host] ready wait=%lu mask=0x%08lX core=0x%08lX\n", readyWait,
+    std::printf("[sdk-host] ready wait=%lu mask=0x%08lX core=0x%08lX\n",
+                readyWait,
                 static_cast<unsigned long>(state.ReadyMask.load(std::memory_order_acquire)),
                 static_cast<unsigned long>(BLIND_SDK_READY_CORE_MASK));
 
@@ -441,10 +426,13 @@ int wmain(int argc, wchar_t **argv)
 
     const DWORD readyMask = state.ReadyMask.load(std::memory_order_acquire);
     const DWORD events = state.EventCount.load(std::memory_order_acquire);
-    std::printf("[sdk-host] child_wait=0x%08lX child_exit=0x%08lX events=%lu ready_mask=0x%08lX\n", childWait,
-                exitCode, static_cast<unsigned long>(events), static_cast<unsigned long>(readyMask));
+    std::printf("[sdk-host] child_wait=0x%08lX child_exit=0x%08lX events=%lu ready_mask=0x%08lX\n",
+                childWait,
+                exitCode,
+                static_cast<unsigned long>(events),
+                static_cast<unsigned long>(readyMask));
 
-    return exitCode == 0 && events != 0 && (readyMask & BLIND_SDK_READY_CORE_MASK) == BLIND_SDK_READY_CORE_MASK
-               ? 0
-               : 5;
+    const bool readySatisfied =
+        state.ReadyAnySatisfies ? readyMask != 0 : (readyMask & BLIND_SDK_READY_CORE_MASK) == BLIND_SDK_READY_CORE_MASK;
+    return exitCode == 0 && events != 0 && readySatisfied ? 0 : 5;
 }

@@ -1,0 +1,91 @@
+struct CliDetectionFoldState {
+  UINT32 Operation = 0;
+  UINT64 Caller = 0;
+  UINT64 SyscallNumber = 0;
+  UINT64 StubOffset = 0;
+  UINT64 FirstPage = 0;
+  UINT64 LastPage = 0;
+  UINT32 Count = 0;
+  UINT32 SampleSize = 0;
+  char ModuleName[IXIPC_MAX_HOOK_MODULE_NAME]{};
+  UINT8 Sample[16]{};
+};
+
+struct ServerContext {
+  HANDLE ReadyEvent = nullptr;
+  HANDLE ChildProcessHandle = nullptr;
+  std::atomic<bool> Stop{false};
+  bool Verbose = false;
+  bool CliMode = false;
+  bool ResolveSymbols = false;
+  std::wstring SymbolSearchPath;
+  bool SmartMode = false;
+  bool SmartRawEvents = false;
+  bool SmartStacks = false;
+  UINT32 SmartStackFrameLimit = IXIPC_MAX_HOOK_STACK_FRAMES;
+  UINT32 SmartAreas = kSmartAreaDefault;
+  DWORD SmartSummaryIntervalMs = 0;
+  DWORD LastSmartSummaryTick = 0;
+  bool DebugDiagnostics = true;
+  bool LaunchGateMode = false;
+  DWORD ChildTimeoutMs = INFINITE;
+  std::wstring RunDir;
+  std::wstring LogDir;
+  std::wstring RuntimeLogPath;
+  std::wstring HostLogPath;
+  FILE *EventsFile = nullptr;
+  FILE *SelfMapFile = nullptr;
+  FILE *HostLogFile = nullptr;
+  DWORD ChildProcessId = 0;
+  std::atomic<DWORD> ReadyMask{0};
+  std::atomic<DWORD> HookEventCount{0};
+  std::atomic<DWORD> LaunchGateTrapCount{0};
+  std::atomic<DWORD> PrintedEventCount{0};
+  std::atomic<DWORD> SuppressedEventCount{0};
+  DWORD EventKindCounts[8]{};
+  std::wstring PipeName;
+  std::vector<SelfMapEntry> SelfMapEntries;
+  std::vector<ChildModuleEntry> ChildModules;
+  std::vector<ProcessInfoEntry> ProcessInfoCache;
+  std::unordered_map<DWORD, std::size_t> ProcessInfoByPid;
+  std::vector<ProcessHandleEntry> ProcessHandleCache;
+  std::vector<ThreadInfoEntry> ThreadInfoCache;
+  std::unordered_map<DWORD, std::size_t> ThreadInfoByTid;
+  std::map<AddressRangeKey, VadCacheEntry> VadCache;
+  std::unordered_set<UINT64> SymbolAttemptedBases;
+  DWORD LastSymbolSweepModuleTick = 0;
+  DWORD LastModuleSnapshotTick = 0;
+  bool SymbolsInitialized = false;
+  SmartConditions Conditions{};
+  std::vector<SmartMemoryRegion> SmartRegions;
+  std::map<AddressRangeKey, std::size_t> SmartRegionByBase;
+  std::vector<SmartProtectGroup> SmartProtectGroups;
+  std::unordered_map<SmartProtectKey, std::size_t, SmartProtectKeyHash>
+      SmartProtectGroupByKey;
+  std::vector<SmartThreadGroup> SmartThreadGroups;
+  std::unordered_map<SmartThreadKey, std::size_t, SmartThreadKeyHash>
+      SmartThreadGroupByKey;
+  std::vector<SmartHandleGroup> SmartHandleGroups;
+  std::unordered_map<SmartHandleKey, std::size_t, SmartHandleKeyHash>
+      SmartHandleGroupByKey;
+  std::vector<SmartTargetSummary> SmartTargets;
+  std::unordered_map<DWORD, std::size_t> SmartTargetByPid;
+  std::vector<CliDetectionFoldState> CliDetectionFolds;
+  IXIPC_QUERY_HOOK_POLICY_RESPONSE CliPolicy{};
+  IXIPC_HOOK_EVENT LastPrintedCliEvent{};
+  UINT32 LastPrintedCliRepeat = 1;
+  UINT32 LastPrintedCliRepeatMilestone = 0;
+  bool HasLastPrintedCliEvent = false;
+};
+
+void ReserveServerContextStorage(ServerContext &ctx, bool remoteSmart);
+
+using BLIND_SUPPORT::EffectivePipeName;
+using BLIND_SUPPORT::EnsureDirectory;
+using BLIND_SUPPORT::EnvironmentVariableEnabled;
+using BLIND_SUPPORT::FileExists;
+using BLIND_SUPPORT::JoinPath;
+using BLIND_SUPPORT::KindName;
+using BLIND_SUPPORT::ModuleDirectory;
+using BLIND_SUPPORT::QuotePath;
+using BLIND_SUPPORT::WritePacket;

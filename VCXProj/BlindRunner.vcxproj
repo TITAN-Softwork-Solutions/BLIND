@@ -44,11 +44,11 @@
       <SDLCheck>true</SDLCheck>
       <BufferSecurityCheck>true</BufferSecurityCheck>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ExceptionHandling>Sync</ExceptionHandling>
       <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)..\ABI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)..;$(MSBuildThisFileDirectory)..\Injector;$(MSBuildThisFileDirectory)..\ABI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -58,6 +58,7 @@
       <RandomizedBaseAddress>true</RandomizedBaseAddress>
       <HighEntropyVA>true</HighEntropyVA>
       <DataExecutionPrevention>true</DataExecutionPrevention>
+      <AdditionalDependencies>Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
@@ -69,6 +70,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <StringPooling>true</StringPooling>
@@ -79,11 +81,65 @@
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\runner\BlindRunner.cpp" />
+    <ClCompile Include="..\Injector\App\BlindRunner.cpp" />
+    <ClCompile Include="..\Injector\Telemetry\cli_event_filter.cpp" />
+    <ClCompile Include="..\Injector\Telemetry\cli_events.cpp" />
+    <ClCompile Include="..\Injector\Telemetry\cli_policy.cpp" />
+    <ClCompile Include="..\Injector\Diagnostics\diagnostics.cpp" />
+    <ClCompile Include="..\Injector\Telemetry\event_formatting.cpp" />
+    <ClCompile Include="..\Injector\Telemetry\formatting.cpp" />
+    <ClCompile Include="..\Injector\Policy\hook_catalog.cpp" />
+    <ClCompile Include="..\Injector\Policy\hook_groups.cpp" />
+    <ClCompile Include="..\Injector\Diagnostics\host_logging.cpp" />
+    <ClCompile Include="..\Injector\Launch\injection.cpp" />
+    <ClCompile Include="..\Injector\Policy\option_parsing.cpp" />
+    <ClCompile Include="..\Injector\Policy\option_policy.cpp" />
+    <ClCompile Include="..\Injector\Policy\option_values.cpp" />
+    <ClCompile Include="..\Injector\Ipc\pipe_server.cpp" />
+    <ClCompile Include="..\Injector\Telemetry\process_cache.cpp" />
+    <ClCompile Include="..\Injector\Telemetry\process_symbols.cpp" />
+    <ClCompile Include="..\Injector\Core\runner_console.cpp" />
+    <ClCompile Include="..\Injector\Core\runner_help.cpp" />
+    <ClCompile Include="..\Injector\Core\server_context.cpp" />
+    <ClCompile Include="..\Injector\Telemetry\smart_capture.cpp" />
+    <ClCompile Include="..\Injector\Telemetry\smart_state.cpp" />
+    <ClCompile Include="..\Injector\Telemetry\smart_summary.cpp" />
+    <ClCompile Include="..\Injector\Telemetry\smart_summary_render.cpp" />
+    <ClCompile Include="..\Injector\Telemetry\stack_address.cpp" />
+    <ClCompile Include="..\Mapper\bootstrap.cpp" />
+    <ClCompile Include="..\Mapper\orchestrator.cpp" />
+    <ClCompile Include="..\Mapper\debug_pause.cpp" />
+    <ClCompile Include="..\Mapper\image.cpp" />
+    <ClCompile Include="..\Mapper\imports.cpp" />
+    <ClCompile Include="..\Mapper\protections.cpp" />
+    <ClCompile Include="..\Mapper\relocations.cpp" />
     <ClInclude Include="..\ABI\blind_ipc.h" />
+    <ClInclude Include="..\DLL\support\win32_util.h" />
+    <ClInclude Include="..\Injector\Telemetry\behavior_model.h" />
+    <ClInclude Include="..\Injector\Telemetry\cli_events.h" />
+    <ClInclude Include="..\Injector\Diagnostics\diagnostics.h" />
+    <ClInclude Include="..\Injector\Telemetry\event_formatting.h" />
+    <ClInclude Include="..\Injector\Policy\hook_catalog.h" />
+    <ClInclude Include="..\Injector\Launch\injection.h" />
+    <ClInclude Include="..\Injector\Policy\option_parsing.h" />
+    <ClInclude Include="..\Injector\Ipc\pipe_server.h" />
+    <ClInclude Include="..\Injector\Telemetry\process_cache.h" />
+    <ClInclude Include="..\Injector\Telemetry\process_symbols.h" />
+    <ClInclude Include="..\Injector\Core\runner_console.h" />
+    <ClInclude Include="..\Injector\Core\runner_common.h" />
+    <ClInclude Include="..\Injector\Core\runner_core.h" />
+    <ClInclude Include="..\Injector\Core\runner_help.h" />
+    <ClInclude Include="..\Injector\Core\server_context.h" />
+    <ClInclude Include="..\Injector\Telemetry\smart_capture.h" />
+    <ClInclude Include="..\Injector\Telemetry\smart_state.h" />
+    <ClInclude Include="..\Injector\Telemetry\smart_summary.h" />
+    <ClInclude Include="..\Injector\Telemetry\stack_address.h" />
+    <ClInclude Include="..\Mapper\mapper.h" />
+    <ClInclude Include="..\Mapper\internal.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

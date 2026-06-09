@@ -1,6 +1,6 @@
 # BLIND Integration Guide
 
-This guide defines the supported host contract for integrating BLIND as a standalone user-mode EDR sensor component.
+This guide defines the supported host contract for integrating BLIND as a standalone user-mode dynamic instrumentation component.
 
 ## Supported Model
 
@@ -10,7 +10,7 @@ BLIND integration is local and owned-process only:
 2. The host creates or owns the target process.
 3. The host sets BLIND environment variables for the child.
 4. The host loads `BLIND.dll` into the child.
-5. The DLL connects to the pipe, handshakes, publishes readiness, and emits telemetry.
+5. The DLL connects to the pipe, handshakes, publishes readiness, and emits instrumentation events.
 6. The host acknowledges every valid request packet with one response packet using the same sequence number.
 
 The standalone SDK does not provide a kernel-driver control plane, privileged device transport, arbitrary-PID attach, service deployment, or remote collection.
@@ -67,13 +67,28 @@ Return:
 
 OR the request `ReadyMask` into the host-observed ready mask.
 
-Use `BLIND_SDK_READY_CORE_MASK` as the complete standalone-ready target:
+Use `BLIND_SDK_READY_CORE_MASK` as the minimum healthy standalone-ready target:
 
 ```text
-IPC_CONNECTED | WINSOCK | NT | KI = 0x0000000F
+IPC_CONNECTED | NT | KI = 0x0000000D
 ```
 
+Module-aware CLI runs commonly publish `0x0000001D` after module initialization. `BLIND_SDK_READY_FULL_MASK` is `0x0000001F` when IPC, Winsock, NT, KI, and module coverage are all active.
+
 Return the observed mask in `NotifyHookReadyResponse.ObservedMask`.
+
+### `IxIpcCommandQueryHookPolicy`
+
+Return `PolicyVersion = IXIPC_HOOK_POLICY_VERSION`. Hosts that are not driving CLI policy should leave the remaining response fields zeroed.
+
+CLI-capable hosts populate `IXIPC_QUERY_HOOK_POLICY_RESPONSE` before the runtime installs NT hooks:
+
+- `Flags`: set `IXIPC_HOOK_POLICY_FLAG_CLI_MODE` and `IXIPC_HOOK_POLICY_FLAG_EXPLICIT_NT` to install only requested NT hooks.
+- `Rules[]`: fixed NT API names, action (`NONE`, `DENY`, or `SILENT_DENY`), logging, stack-trace, register-snapshot flags, and denial status.
+- `IgnoreDlls[]`: immediate-caller DLL basenames to suppress.
+- `IXIPC_HOOK_POLICY_FLAG_IGNORE_PRIVATE`: suppress events whose trace originates in private or unmapped executable memory.
+
+The bundled runner's behavior mode is host-side only. It consumes ordinary `IXIPC_HOOK_EVENT` records and groups allocations, VAD metadata, protection transitions, writes, thread starts, and APC starts into behavior summaries; no additional IPC commands are required.
 
 ### `IxIpcCommandPublishHookEvent`
 
@@ -88,9 +103,10 @@ Important fields:
 - `Caller`, `Context0..Context3`: event-specific addresses and values.
 - `Args[]`: event-specific arguments.
 - `Stack[]`, `StackCount`, `CallerFlags`: stack and caller classification.
-- `DataSample`, `DataSize`: bounded printable or binary sample bytes.
+- `Status`, `Action`: the NTSTATUS and CLI action applied to policy-driven events.
+- `DataSample`, `DataSize`: bounded printable or binary sample bytes. CLI register snapshots are published here as a printable `rip=... rsp=...` line when `IXIPC_HOOK_RULE_FLAG_REGISTERS` is set.
 
-Do not block in the packet handling path. Queue event processing to a worker if enrichment, disk writes, or UI updates may be slow.
+Do not block in the packet handling path. Queue event processing to a worker if enrichment, disk writes, or host-side processing may be slow.
 
 ### `IxIpcCommandPublishHookEventBatch`
 
@@ -129,7 +145,7 @@ Decode:
 - `Args[6]`: entry index;
 - `Args[7]`: high 32 bits are total, low 32 bits are truncated count.
 
-`docs/DIAGNOSTICS.md` documents the TSV form written by the full runner.
+`Docs/DIAGNOSTICS.md` documents the TSV form written by the full runner.
 
 ## Loading The DLL
 
@@ -149,7 +165,7 @@ Host-side IPC handling should remain bounded:
 - validate packet version and command before reading payload fields;
 - send a response for every valid request;
 - queue heavy work away from the pipe thread;
-- rate-limit console or UI printing;
+- rate-limit terminal printing;
 - preserve raw packets or decoded JSONL if later analysis is required.
 
 ## Failure Handling

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -45,11 +45,11 @@
       <SDLCheck>true</SDLCheck>
       <BufferSecurityCheck>true</BufferSecurityCheck>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ExceptionHandling>Sync</ExceptionHandling>
       <PreprocessorDefinitions>BLIND_STANDALONE=1;IX_BLIND_EXPORTS;WIN32_LEAN_AND_MEAN;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)..\ABI;$(MSBuildThisFileDirectory)..\Usermode\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)..\ABI;$(MSBuildThisFileDirectory)..\DLL\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -59,7 +59,7 @@
       <RandomizedBaseAddress>true</RandomizedBaseAddress>
       <HighEntropyVA>true</HighEntropyVA>
       <DataExecutionPrevention>true</DataExecutionPrevention>
-      <AdditionalDependencies>Ws2_32.lib;Dnsapi.lib;Advapi32.lib;Ole32.lib;Secur32.lib;Crypt32.lib;Winhttp.lib;Wininet.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
@@ -88,43 +88,72 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\Usermode\hook\hooks\controller.cpp" />
-    <ClCompile Include="..\Usermode\hook\hooks\ki.cpp" />
-    <ClCompile Include="..\Usermode\hook\hooks\module.cpp" />
-    <ClCompile Include="..\Usermode\hook\hooks\nt.cpp">
+    <ClCompile Include="..\DLL\hooks\controller.cpp" />
+    <ClCompile Include="..\DLL\hooks\ki.cpp" />
+    <ClCompile Include="..\DLL\hooks\nt_inline.cpp">
       <ControlFlowGuard Condition="'$(Configuration)'=='Release'">false</ControlFlowGuard>
       <WholeProgramOptimization Condition="'$(Configuration)'=='Release'">false</WholeProgramOptimization>
     </ClCompile>
-    <ClCompile Include="..\Usermode\hook\hooks\runtime_bootstrap.cpp" />
-    <ClCompile Include="..\Usermode\hook\hooks\runtime.cpp" />
-    <ClCompile Include="..\Usermode\hook\hooks\runtime_cfg.cpp" />
-    <ClCompile Include="..\Usermode\hook\hooks\runtime_integrity.cpp" />
-    <ClCompile Include="..\Usermode\hook\hooks\runtime_launch_gate.cpp" />
-    <ClCompile Include="..\Usermode\hook\hooks\runtime_pic.cpp" />
-    <ClCompile Include="..\Usermode\hook\hooks\ws.cpp" />
-    <ClCompile Include="..\Usermode\hook\instrument\stacktrace.cpp" />
-    <ClCompile Include="..\Usermode\hook\instrument\ix.cpp" />
-    <ClCompile Include="..\Usermode\hook\ipc\pipe.cpp" />
-    <ClCompile Include="..\Usermode\hook\ipc\recv.cpp" />
-    <ClCompile Include="..\Usermode\hook\ipc\send.cpp" />
-    <ClCompile Include="..\Usermode\hook\dll.cpp" />
+    <ClCompile Include="..\DLL\hooks\nt_int3.cpp">
+      <ControlFlowGuard Condition="'$(Configuration)'=='Release'">false</ControlFlowGuard>
+      <WholeProgramOptimization Condition="'$(Configuration)'=='Release'">false</WholeProgramOptimization>
+    </ClCompile>
+    <ClCompile Include="..\DLL\hooks\nt_methods.cpp">
+      <ControlFlowGuard Condition="'$(Configuration)'=='Release'">false</ControlFlowGuard>
+      <WholeProgramOptimization Condition="'$(Configuration)'=='Release'">false</WholeProgramOptimization>
+    </ClCompile>
+    <ClCompile Include="..\DLL\hooks\stack_fabricate.cpp" />
+    <ClCompile Include="..\DLL\hooks\module\credentials_crypto_amsi.cpp" />
+    <ClCompile Include="..\DLL\hooks\module\event.cpp" />
+    <ClCompile Include="..\DLL\hooks\module\exception_etw.cpp" />
+    <ClCompile Include="..\DLL\hooks\module\http_tls.cpp" />
+    <ClCompile Include="..\DLL\hooks\module\iat.cpp" />
+    <ClCompile Include="..\DLL\hooks\module\jobs_lsa_sspi.cpp" />
+    <ClCompile Include="..\DLL\hooks\module\loader.cpp" />
+    <ClCompile Include="..\DLL\hooks\module\module.cpp" />
+    <ClCompile Include="..\DLL\hooks\module\patch.cpp" />
+    <ClCompile Include="..\DLL\hooks\module\state.cpp" />
+    <ClCompile Include="..\DLL\hooks\nt.cpp">
+      <ControlFlowGuard Condition="'$(Configuration)'=='Release'">false</ControlFlowGuard>
+      <WholeProgramOptimization Condition="'$(Configuration)'=='Release'">false</WholeProgramOptimization>
+    </ClCompile>
+    <ClCompile Include="..\DLL\hooks\runtime\bootstrap.cpp" />
+    <ClCompile Include="..\DLL\hooks\runtime\cfg.cpp" />
+    <ClCompile Include="..\DLL\hooks\runtime\instrumentation.cpp" />
+    <ClCompile Include="..\DLL\hooks\runtime\integrity.cpp" />
+    <ClCompile Include="..\DLL\hooks\runtime\launch_gate.cpp" />
+    <ClCompile Include="..\DLL\hooks\runtime\pic.cpp" />
+    <ClCompile Include="..\DLL\hooks\runtime\policy.cpp" />
+    <ClCompile Include="..\DLL\hooks\runtime\runtime.cpp" />
+    <ClCompile Include="..\DLL\hooks\ws.cpp" />
+    <ClCompile Include="..\DLL\instrument\stacktrace.cpp" />
+    <ClCompile Include="..\DLL\instrument\ix.cpp" />
+    <ClCompile Include="..\DLL\ipc\pipe.cpp" />
+    <ClCompile Include="..\DLL\ipc\recv.cpp" />
+    <ClCompile Include="..\DLL\ipc\send.cpp" />
+    <ClCompile Include="..\DLL\dll.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ABI\blind_ipc.h" />
     <ClInclude Include="..\sdk\include\blind\blind_ipc.h" />
     <ClInclude Include="..\sdk\include\blind\blind_veh.h" />
-    <ClInclude Include="..\Usermode\include\native_peb.h" />
-    <ClInclude Include="..\Usermode\hook\hooks\controller.h" />
-    <ClInclude Include="..\Usermode\hook\hooks\encoded_literal.h" />
-    <ClInclude Include="..\Usermode\hook\hooks\ki.h" />
-    <ClInclude Include="..\Usermode\hook\hooks\module.h" />
-    <ClInclude Include="..\Usermode\hook\hooks\nt.h" />
-    <ClInclude Include="..\Usermode\hook\hooks\runtime.h" />
-    <ClInclude Include="..\Usermode\hook\hooks\runtime_private.h" />
-    <ClInclude Include="..\Usermode\hook\hooks\ws.h" />
-    <ClInclude Include="..\Usermode\hook\instrument\ix.h" />
-    <ClInclude Include="..\Usermode\hook\instrument\stacktrace.h" />
-    <ClInclude Include="..\Usermode\hook\ipc\pipe.h" />
+    <ClInclude Include="..\DLL\include\native_peb.h" />
+    <ClInclude Include="..\DLL\hooks\controller.h" />
+    <ClInclude Include="..\DLL\hooks\encoded_literal.h" />
+    <ClInclude Include="..\DLL\hooks\ki.h" />
+    <ClInclude Include="..\DLL\hooks\nt_methods.h" />
+    <ClInclude Include="..\DLL\hooks\stack_fabricate.h" />
+    <ClInclude Include="..\DLL\hooks\module\module.h" />
+    <ClInclude Include="..\DLL\hooks\module\module_internal.h" />
+    <ClInclude Include="..\DLL\hooks\nt.h" />
+    <ClInclude Include="..\DLL\hooks\runtime\runtime_internal.h" />
+    <ClInclude Include="..\DLL\hooks\runtime\private\api.h" />
+    <ClInclude Include="..\DLL\hooks\runtime\private\types.h" />
+    <ClInclude Include="..\DLL\hooks\runtime\runtime.h" />
+    <ClInclude Include="..\DLL\hooks\ws.h" />
+    <ClInclude Include="..\DLL\instrument\ix.h" />
+    <ClInclude Include="..\DLL\instrument\stacktrace.h" />
+    <ClInclude Include="..\DLL\ipc\pipe.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

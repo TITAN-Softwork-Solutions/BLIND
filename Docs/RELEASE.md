@@ -13,14 +13,15 @@ BLIND.pdb                optional, controlled symbols only
 BlindRunner.exe          diagnostic runner
 BlindSdkHost.exe         SDK smoke-test host
 BlindTestTarget.exe      benign owned test target
-sdk/include/blind/*
-sdk/samples/host/BlindSdkHost.cpp
+BlindLaunchGateTarget.exe no-CRT launch-gate test target
+SDK/include/blind/*
+SDK/samples/host/BlindSdkHost.cpp
 README.md
 LICENSE.md
-docs/SDK.md
-docs/INTEGRATION.md
-docs/DIAGNOSTICS.md
-docs/RELEASE.md
+Docs/SDK.md
+Docs/INTEGRATION.md
+Docs/DIAGNOSTICS.md
+Docs/RELEASE.md
 ```
 
 Do not stage `bin/`, `obj/`, old diagnostic run folders, temporary disassembler files, editor state, or unmanaged logs.
@@ -30,10 +31,11 @@ Do not stage `bin/`, `obj/`, old diagnostic run folders, temporary disassembler 
 Run from this directory:
 
 ```powershell
-msbuild .\vcxproj\BLIND.vcxproj /p:Configuration=Release /p:Platform=x64
-msbuild .\vcxproj\BlindTestTarget.vcxproj /p:Configuration=Release /p:Platform=x64
-msbuild .\vcxproj\BlindRunner.vcxproj /p:Configuration=Release /p:Platform=x64
-msbuild .\vcxproj\BlindSdkHost.vcxproj /p:Configuration=Release /p:Platform=x64
+msbuild .\VCXProj\BLIND.vcxproj /p:Configuration=Release /p:Platform=x64
+msbuild .\VCXProj\BlindTestTarget.vcxproj /p:Configuration=Release /p:Platform=x64
+msbuild .\VCXProj\BlindLaunchGateTarget.vcxproj /p:Configuration=Release /p:Platform=x64
+msbuild .\VCXProj\BlindRunner.vcxproj /p:Configuration=Release /p:Platform=x64
+msbuild .\VCXProj\BlindSdkHost.vcxproj /p:Configuration=Release /p:Platform=x64
 .\bin\Release\x64\BlindRunner.exe
 .\bin\Release\x64\BlindRunner.exe --launch-gate --pipe \\.\pipe\BLINDReleaseLaunchGate
 .\bin\Release\x64\BlindSdkHost.exe
@@ -42,7 +44,7 @@ msbuild .\vcxproj\BlindSdkHost.vcxproj /p:Configuration=Release /p:Platform=x64
 Expected:
 
 - both executables exit with code `0`;
-- readiness includes `BLIND_SDK_READY_CORE_MASK`;
+- readiness includes `BLIND_SDK_READY_CORE_MASK` (`0x0000000D`: IPC, NT, KI);
 - at least one hook event is received;
 - the launch-gate harness reports `launch_gate_traps > 0`;
 - diagnostics include `summary.txt`, `events.jsonl`, `selfmap.tsv`, and runtime log;
@@ -63,6 +65,6 @@ Before handoff:
 Do not publish or transfer the package until:
 
 - `LICENSE.md` controls are included;
-- `docs/SDK.md` and `docs/INTEGRATION.md` are included;
+- `Docs/SDK.md` and `Docs/INTEGRATION.md` are included;
 - the sample host has passed against the exact staged DLL;
 - the package owner confirms the recipient, purpose, retention, and deletion requirements.
